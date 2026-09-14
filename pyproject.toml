@@ -1,0 +1,26 @@
+[project]
+name = "arca_comex"
+version = "0.1.0"
+description = "Análisis de datos de ARCA para comercio exterior en Argentina"
+readme = "README.md"
+requires-python = ">=3.14"
+authors = [
+    {name = "Fernanda Aguirre Ruiz"}
+]
+
+dependencies = [
+    "ipykernel",
+    "nbformat",
+    "pandas",
+    "numpy",
+    "requests",
+    "plotly",
+    "openpyxl",
+]
+
+[build-system]
+requires = ["hatchling>=1.0.0"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = false
