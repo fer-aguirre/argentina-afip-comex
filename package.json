@@ -1,0 +1,14 @@
+{
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "observable preview",
+    "build": "observable build"
+  },
+  "dependencies": {
+    "@observablehq/framework": "^1"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

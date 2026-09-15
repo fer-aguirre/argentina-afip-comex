@@ -114,6 +114,9 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
+# ruff
+.ruff_cache/
+
 # Pyre type checker
 .pyre/
 
@@ -134,3 +137,16 @@ config.ini
 
 # Quarto files
 /.quarto/
+
+# Directories
+data/
+docs/
+outputs/
+
+# Claude
+.claude/
+CLAUDE.md
+
+# Node / Observable Framework
+node_modules/
+.observablehq/

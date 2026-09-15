@@ -38,6 +38,30 @@ Created by: Fernanda Aguirre Ruiz
 ┴
 
 ```
+
+---
+
+### Data dictionary for `importaciones_2023-2026_decoded.parquet`
+
+| Column | Type | Source | Description |
+|--------|------|--------|-------------|
+| ADUANA | string | ANEXOIV | Customs office where import was registered |
+| DESTINACION | string | — | Import declaration registration number |
+| NUM_ITEM | string | — | Item number within the declaration |
+| FECHA | string | — | Date of formalization (YYYYMM format) |
+| IMPORTADOR | string | — | Importer's full name |
+| MEDIO_TRANSPORTE | string | ANEXOV | Transport method (e.g., CAMION, AVION, ACUATICO) |
+| UNIDAD_MEDIDA | string | ANEXOXV | Unit of measure (e.g., TONELADA, UNIDAD, KILOGRAMO) |
+| CANTIDAD_UNIDAD_MEDIDA | float64 | — | Quantity in specified unit |
+| FOB_UNITARIO_USD | float64 | — | Unit FOB/CIF value in USD |
+| FOB_TOTAL_USD | float64 | — | Total FOB/CIF value in USD |
+| DIVISA | string | ANEXOXI | Currency (e.g., DOLAR, EURO, GUARANI) |
+| PAIS_ORIGEN | string | ANEXOVII | Country of origin |
+| PAIS_PROCEDENCIA | string | ANEXOVII | Country of precedence |
+| NCM | string | — | Mercosur tariff position (not decoded — external catalog) |
+| CONCEPTO_TRIBUTARIO | string | ANEXOXX | Tax/collection concept (e.g., DERECHOS IMPORTACION, TASA DE ESTADISTICA) |
+| MONTO_TRIBUTADO | float64 | — | Tax/collection amount; null if not applicable |
+
 ---
 
 ## License

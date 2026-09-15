@@ -16,6 +16,11 @@ dependencies = [
     "requests",
     "plotly",
     "openpyxl",
+    "beautifulsoup4>=4.15.0",
+    "polars>=1.44.2",
+    "tqdm>=4.70.1",
+    "ipywidgets>=8.1.9",
+    "xlsxwriter",
 ]
 
 [build-system]
@@ -24,3 +29,9 @@ build-backend = "hatchling.build"
 
 [tool.uv]
 package = false
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+    "ruff>=0.16.7",
+]
