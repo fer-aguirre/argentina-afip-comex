@@ -139,9 +139,12 @@ config.ini
 /.quarto/
 
 # Directories
-data/
-docs/
+assets/
 outputs/
+
+# Data files
+data/raw
+data/interim
 
 # Claude
 .claude/

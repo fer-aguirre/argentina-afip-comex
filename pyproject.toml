@@ -23,12 +23,15 @@ dependencies = [
     "xlsxwriter",
 ]
 
+[project.scripts]
+arca-comex-query = "arca_comex.query:main"
+
 [build-system]
 requires = ["hatchling>=1.0.0"]
 build-backend = "hatchling.build"
 
 [tool.uv]
-package = false
+package = true
 
 [dependency-groups]
 dev = [
