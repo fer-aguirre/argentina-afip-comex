@@ -145,6 +145,7 @@ outputs/
 # Data files
 data/raw
 data/interim
+data/processed
 
 # Claude
 .claude/
