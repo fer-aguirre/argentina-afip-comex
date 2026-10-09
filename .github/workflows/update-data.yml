@@ -1,0 +1,70 @@
+# Actualiza el dataset de importaciones con los meses nuevos que publique ARCA.
+#
+# ARCA publica cada mes el día 1 del mes siguiente (alrededor de las 08:00), así
+# que se revisa del 1 al 7 de cada mes. Si hay meses nuevos, se procesan solo
+# esos (ver argentina_afip_comex/update.py), se publica un release nuevo con el
+# dataset completo (borrando el anterior) y se commitea data/manifest.json.
+# Si no hay nada nuevo, termina en un par de minutos sin publicar nada.
+name: Actualizar datos
+
+on:
+  schedule:
+    # 09:14 hora de Argentina (UTC-3, sin horario de verano) = 12:14 UTC,
+    # días 1 a 7 de cada mes. Fuera de la hora en punto, cuando GitHub demora
+    # más los workflows programados.
+    - cron: "14 12 1-7 * *"
+  # Permite correrlo a mano desde la pestaña Actions.
+  workflow_dispatch:
+
+permissions:
+  # Necesario para crear releases y pushear el manifest.
+  contents: write
+
+# Nunca dos actualizaciones a la vez: la segunda espera a que termine la primera.
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+
+      - name: Instalar dependencias
+        run: uv sync --frozen --no-dev
+
+      - name: Procesar meses nuevos
+        id: update
+        run: uv run argentina-afip-update
+
+      - name: Publicar release
+        if: steps.update.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ADDED_MONTHS: ${{ steps.update.outputs.added_months }}
+          LAST_MONTH: ${{ steps.update.outputs.last_month }}
+        run: |
+          tag="v$(TZ=America/Argentina/Buenos_Aires date +%Y.%m.%d)"
+          gh release create "$tag" data/processed/importaciones_decoded.parquet \
+            --title "$tag" \
+            --notes "Dataset de importaciones ARCA decodificado, de 2019-01 a ${LAST_MONTH}. Meses agregados en esta actualización: ${ADDED_MONTHS}."
+          # Se conserva solo el release más reciente.
+          gh release list --json tagName --jq '.[].tagName' | grep -vxF "$tag" |
+            while read -r old_tag; do
+              gh release delete "$old_tag" --yes --cleanup-tag
+            done
+
+      - name: Commitear manifest
+        if: steps.update.outputs.updated == 'true'
+        env:
+          LAST_MONTH: ${{ steps.update.outputs.last_month }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/manifest.json
+          git commit -m "Actualizar datos hasta ${LAST_MONTH}"
+          git push
