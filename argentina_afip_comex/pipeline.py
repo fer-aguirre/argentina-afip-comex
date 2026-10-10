@@ -96,8 +96,11 @@ FINAL_COLUMN_NAMES = {
     "M": "MEDIO_TRANSPORTE",
     "UN": "UNIDAD_MEDIDA",
     "CANT_UNIDAD_MEDIDA": "CANTIDAD_UNIDAD_MEDIDA",
-    "FOB_DOLAR": "FOB_UNITARIO_USD",
-    "FOB_TOTAL": "FOB_TOTAL_USD",
+    # Pese a los nombres de ARCA, los montos están en la moneda de DIV (no
+    # siempre dólares). FOB_DOLAR es el valor del ítem (no un precio por
+    # unidad) y FOB_TOTAL el total de la declaración, repetido en cada ítem.
+    "FOB_DOLAR": "VALOR_FOB_ITEM",
+    "FOB_TOTAL": "VALOR_FOB_DECLARACION",
     "DIV": "DIVISA",
     "POS_NCM": "NCM",
 }
