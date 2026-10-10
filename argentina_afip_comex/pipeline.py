@@ -272,8 +272,9 @@ def reshape_month(interim_path: Path) -> Path:
 
     The raw report has one row per (declaration item, tax concept) pair, with
     every shipment-level field repeated and only MONTO varying. MONTO is summed
-    into MONTO_TRIBUTADO_TOTAL and COD is dropped. Skips the reshape if the
-    output exists.
+    into MONTO_TRIBUTADO_TOTAL and COD is dropped; it's null when every MONTO
+    of the item is blank, so missing amounts aren't mistaken for 0. Skips the
+    reshape if the output exists.
 
     Args:
         interim_path: Month parquet written by `convert_month_to_parquet`.
@@ -290,8 +291,11 @@ def reshape_month(interim_path: Path) -> Path:
     # MONTO is a padded string in the raw data; empty strings (no tax charged)
     # become null before casting so they don't fail the cast.
     lf = lf.with_columns(pl.col("MONTO").replace("", None).cast(pl.Float64))
+    # sum() of only nulls returns 0, so keep null when no MONTO was reported.
     lf = lf.group_by(KEY_COLUMNS).agg(
-        pl.col("MONTO").sum().alias("MONTO_TRIBUTADO_TOTAL")
+        pl.when(pl.col("MONTO").is_not_null().any())
+        .then(pl.col("MONTO").sum())
+        .alias("MONTO_TRIBUTADO_TOTAL")
     )
     lf.sink_parquet(output_path)
     return output_path

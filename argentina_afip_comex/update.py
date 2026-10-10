@@ -40,7 +40,7 @@ MANIFEST_PATH = PROJECT_ROOT / "data" / "manifest.json"
 
 # Proporción máxima de filas de un mes con códigos que no están en los
 # catálogos de docs/ (y que por lo tanto quedan vacíos al decodificar). En los
-# datos 2019-2026 son 8 filas de ~43 millones, así que superar este umbral
+# datos 2019-2026 son 8 filas de ~44 millones, así que superar este umbral
 # indica que ARCA agregó códigos nuevos y hay que actualizar los catálogos.
 MAX_UNKNOWN_CODE_SHARE = 0.001
 
@@ -162,10 +162,12 @@ def update() -> list[str]:
         if interim_path is None:
             raise ValueError(f"{zip_path.name} no contiene un reporte impo_*.lst.")
         reshaped_path = reshape_month(interim_path)
-        decoded_path = decode_month(reshaped_path)
 
-        rows = pl.scan_parquet(decoded_path).select(pl.len()).collect().item()
+        # Check before decoding: decode_month skips months already decoded, so
+        # a month decoded with an outdated catalog would never be redone.
+        rows = pl.scan_parquet(reshaped_path).select(pl.len()).collect().item()
         _check_unknown_codes(reshaped_path, rows)
+        decoded_path = decode_month(reshaped_path)
 
         decoded_paths.append(decoded_path)
         new_records[year_month] = MonthRecord(

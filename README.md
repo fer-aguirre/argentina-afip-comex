@@ -16,7 +16,7 @@ ARCA publica cada mes información de las declaraciones de importación de Argen
 
 Este proyecto toma esos archivos y arma **una sola tabla limpia**:
 
-- **Desde enero de 2019**, con más de 43 millones de filas.
+- **Desde enero de 2019**, con más de 44 millones de filas.
 - **Una fila por ítem de declaración** (un producto dentro de una declaración de importación).
 - Con aduanas, países, monedas, unidades y medios de transporte **traducidos a su nombre**.
 - **Actualizada todos los meses** de forma automática (ver [Actualización automática](#actualización-automática)).
@@ -72,7 +72,7 @@ Si preferís armar la tabla desde cero, con los archivos originales de ARCA, seg
 
 ## Consultar los datos
 
-Las consultas funcionan igual desde un notebook o desde la terminal. Hay que indicar al menos un **importador** o un **código NCM**, para no recorrer las 43 millones de filas sin acotar.
+Las consultas funcionan igual desde un notebook o desde la terminal. Hay que indicar al menos un **importador** o un **código NCM**, para no recorrer los 44 millones de filas sin acotar.
 
 | Filtro | Qué es | Ejemplo |
 |---|---|---|
@@ -140,7 +140,8 @@ df_por_pais = (
 - **Los montos FOB/CIF no siempre están en dólares.** Están en la moneda de la columna `DIVISA`: en 2024, el 85% de los ítems está en dólares, el 9% en euros, el 3% en pesos y el resto en otras monedas. La especificación de ARCA no indica moneda para estos campos (aunque el reporte original llama `FOB_DOLAR` a uno de ellos). Antes de sumar, filtrá por `DIVISA` o convertí cada moneda.
 - **`VALOR_FOB_DECLARACION` es el total de la declaración, repetido en cada ítem.** No hay que sumarlo fila por fila: el resultado queda multiplicado por la cantidad de ítems. Para sumar montos usá `VALOR_FOB_ITEM`. En el 82% de las declaraciones, la suma de sus ítems coincide exactamente con `VALOR_FOB_DECLARACION`; en el resto hay diferencias que todavía no están explicadas.
 - **Las fechas son mensuales.** `FECHA` es el mes de oficialización de la declaración (`AAAAMM`), sin día.
-- **Los impuestos están sumados.** `MONTO_TRIBUTADO_TOTAL` es la suma de todos los conceptos tributarios del ítem; el detalle por impuesto no se conserva.
+- **Los impuestos están sumados.** `MONTO_TRIBUTADO_TOTAL` es la suma de todos los conceptos tributarios del ítem; el detalle por impuesto no se conserva. Queda vacío (no en 0) cuando ARCA no informa ningún monto para el ítem: pasa en el 1,4% de las filas.
+- **`MEDIO_TRANSPORTE` viene vacío en el 27,5% de las filas.** ARCA no lo informa en esos casos; no es un error de decodificación.
 - **Los códigos sin catálogo quedan vacíos.** Si un mes trae una aduana, país, moneda, unidad o medio de transporte que no figura en los catálogos de ARCA (`docs/`), ese campo queda vacío. La actualización se frena si eso pasa en más del 0,1% de las filas de un mes (ver [Actualización automática](#actualización-automática)).
 - **El NCM no se traduce.** Queda como código (ej. `8420.10.90`); para saber qué producto es hay que consultar el nomenclador del Mercosur.
 - **Las correcciones de ARCA no se detectan.** Cada mes se procesa una sola vez. Si ARCA corrige después un mes ya publicado, la tabla mantiene la versión original.
@@ -158,7 +159,7 @@ Columnas de `importaciones_decoded.parquet`. La columna "Catálogo" indica qué 
 | NUM_ITEM | texto | — | Número de ítem dentro de la declaración |
 | FECHA | texto | — | Mes de oficialización (formato AAAAMM, ej. `202401`) |
 | IMPORTADOR | texto | — | Nombre completo del importador |
-| MEDIO_TRANSPORTE | texto | ANEXOV | Medio de transporte (ej. CAMION, AVION, ACUATICO) |
+| MEDIO_TRANSPORTE | texto | ANEXOV | Medio de transporte (ej. CAMION, AVION, ACUATICO). Vacío en el 27,5% de las filas, porque ARCA no lo informa |
 | UNIDAD_MEDIDA | texto | ANEXOXV | Unidad de medida (ej. TONELADA, UNIDAD, KILOGRAMO) |
 | CANTIDAD_UNIDAD_MEDIDA | número | — | Cantidad en la unidad de medida indicada |
 | VALOR_FOB_ITEM | número | — | Valor FOB/CIF del ítem, en la moneda de `DIVISA` (ARCA lo llama "valor unitario", pero no es un precio por unidad) |
@@ -167,7 +168,7 @@ Columnas de `importaciones_decoded.parquet`. La columna "Catálogo" indica qué 
 | PAIS_ORIGEN | texto | ANEXOVII | País de origen |
 | PAIS_PROCEDENCIA | texto | ANEXOVII | País de procedencia |
 | NCM | texto | — | Posición arancelaria del Mercosur, con puntos (ej. `8420.10.90`) |
-| MONTO_TRIBUTADO_TOTAL | número | — | Suma de todos los montos tributados del ítem |
+| MONTO_TRIBUTADO_TOTAL | número | — | Suma de todos los montos tributados del ítem. Vacío si ARCA no informa ningún monto |
 
 La especificación oficial de ARCA para estos archivos está en [`docs/Procedimiento-descarga-y-lectura-archivos-de-ComExAFIP-2018.pdf`](docs/Procedimiento-descarga-y-lectura-archivos-de-ComExAFIP-2018.pdf).
 
@@ -237,7 +238,7 @@ argentina-afip-comex/
 
 ## Fuentes
 
-- Información agregada de comercio exterior, ARCA (ex AFIP): https://www.afip.gob.ar/operadoresComercioExterior/informacionAgregada/informacion-agregada.asp
+- Información agregada de comercio exterior, ARCA (ex AFIP): https://www.afip.gob.ar/operadoresComercioExterior/informacionAgregada/informacion-agregada.asp (consultado el 9 de octubre de 2026)
 - Especificación de los archivos: [`docs/Procedimiento-descarga-y-lectura-archivos-de-ComExAFIP-2018.pdf`](docs/Procedimiento-descarga-y-lectura-archivos-de-ComExAFIP-2018.pdf)
 - Catálogos de códigos (anexos de ARCA): [`docs/`](docs/)
 
