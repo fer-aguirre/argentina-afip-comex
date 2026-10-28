@@ -147,6 +147,9 @@ data/raw
 data/interim
 data/processed
 
+# Jupyter Notebooks
+notebooks/0.6*.ipynb
+
 # Claude
 .claude/
 CLAUDE.md
