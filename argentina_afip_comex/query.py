@@ -1,7 +1,7 @@
 """Consulta y exportación de declaraciones de importación de ARCA Comex.
 
 Funciona tanto como librería (`from argentina_afip_comex.query import query_importaciones`)
-como CLI (`argentina-afip-query --years 2024 --importador "acme"`). El archivo
+como CLI (`argentina-afip-query --years 2024 --nombre "acme"`). El archivo
 exportado es CSV por defecto (`formato`/--formato/-f también acepta "xlsx" y
 "parquet") y va por defecto al directorio actual, tanto desde la librería como
 desde la CLI; usar `output_dir`/--output/-o para exportarlo a otra carpeta (que
@@ -95,8 +95,8 @@ def download_decoded_data() -> None:
 
 def query_importaciones(
     years: int | Sequence[int],
-    importador: str | None = None,
-    ncm: str | Sequence[str] | None = None,
+    nombre: str | None = None,
+    codigo: str | Sequence[str] | None = None,
 ) -> pl.DataFrame:
     """Consulta el dataset de importaciones reformateado.
 
@@ -106,36 +106,35 @@ def query_importaciones(
 
     Args:
         years: Año o lista de años a incluir en la consulta.
-        importador: Nombre (o parte del nombre) del importador a buscar. Se
+        nombre: Nombre (o parte del nombre) del importador a buscar. Se
             busca como texto literal y no distingue mayúsculas/minúsculas.
             Cuanto más específico, mejor: un término corto (ej. "sa") puede
             devolver miles de coincidencias distintas.
-        ncm: Código NCM o lista de códigos/prefijos a buscar. Los puntos u
+        codigo: Código NCM o lista de códigos/prefijos a buscar. Los puntos u
             otros separadores son opcionales (ej. "84.20" equivale a "8420").
 
     Returns:
         DataFrame de polars con las filas que cumplen los filtros.
 
     Raises:
-        ValueError: Si no se especifica ni `importador` ni `ncm`.
+        ValueError: Si no se especifica ni `nombre` ni `codigo`.
     """
-    if importador is None and ncm is None:
-        raise ValueError("Debe indicar al menos `importador` o `ncm`.")
+    if nombre is None and codigo is None:
+        raise ValueError("Debe indicar al menos `nombre` o `codigo`.")
 
     years_list = [years] if isinstance(years, int) else list(years)
     year_strs = [str(year) for year in years_list]
 
     filters = [pl.col("FECHA").str.slice(0, 4).is_in(year_strs)]
 
-    if importador is not None:
+    if nombre is not None:
         # Escapado para que caracteres como "." o "(" se busquen literalmente.
-        filters.append(
-            pl.col("IMPORTADOR").str.contains(f"(?i){re.escape(importador)}")
-        )
+        filters.append(pl.col("IMPORTADOR").str.contains(f"(?i){re.escape(nombre)}"))
 
-    if ncm is not None:
+    if codigo is not None:
         ncm_list = [
-            _normalize_ncm(code) for code in ([ncm] if isinstance(ncm, str) else ncm)
+            _normalize_ncm(code)
+            for code in ([codigo] if isinstance(codigo, str) else codigo)
         ]
         # La columna NCM tiene puntos ("8420.10.00"): se comparan solo los dígitos.
         ncm_digits = pl.col("NCM").str.replace_all(NCM_NON_DIGIT_PATTERN.pattern, "")
@@ -162,8 +161,8 @@ def query_importaciones(
 def export_query_result(
     df_result: pl.DataFrame,
     query_years: int | Sequence[int],
-    query_importador: str | None,
-    query_ncm: str | Sequence[str] | None,
+    query_nombre: str | None,
+    query_codigo: str | Sequence[str] | None,
     output_dir: Path | None = None,
     formato: str = "csv",
 ) -> Path | None:
@@ -175,8 +174,8 @@ def export_query_result(
     Args:
         df_result: DataFrame a exportar.
         query_years: Año o lista de años usados en la consulta.
-        query_importador: Importador usado en la consulta (o None).
-        query_ncm: Código(s) NCM usados en la consulta (o None).
+        query_nombre: Nombre usado en la consulta (o None).
+        query_codigo: Código(s) NCM usados en la consulta (o None).
         output_dir: Carpeta donde escribir el archivo. Si es `None`, se usa
             el directorio actual. Se crea automáticamente si no existe.
         formato: Formato de exportación: "csv" (default), "xlsx" o
@@ -206,13 +205,13 @@ def export_query_result(
     )
 
     name_parts = []
-    if query_importador:
-        name_parts.append(query_importador.strip().replace(" ", "_").lower())
-    if query_ncm:
-        if isinstance(query_ncm, str):
-            name_parts.append(_normalize_ncm(query_ncm))
+    if query_nombre:
+        name_parts.append(query_nombre.strip().replace(" ", "_").lower())
+    if query_codigo:
+        if isinstance(query_codigo, str):
+            name_parts.append(_normalize_ncm(query_codigo))
         else:
-            name_parts.append("-".join(_normalize_ncm(code) for code in query_ncm))
+            name_parts.append("-".join(_normalize_ncm(code) for code in query_codigo))
 
     prefix = "_".join(name_parts)
     export_dir = output_dir if output_dir is not None else Path.cwd()
@@ -245,7 +244,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "importador y/o código NCM, y exporta el resultado (CSV por "
             "defecto, o XLSX/Parquet con --formato) en el directorio actual, "
             "o en la carpeta indicada con --output. Debe indicarse "
-            "--importador y/o --ncm."
+            "--nombre y/o --codigo."
         ),
     )
     parser.add_argument(
@@ -258,8 +257,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Uno o más años a consultar, separados por espacios (ej. --years 2023 2024 2025).",
     )
     parser.add_argument(
-        "-i",
-        "--importador",
+        "-n",
+        "--nombre",
         type=str,
         default=None,
         help=(
@@ -270,15 +269,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "-n",
-        "--ncm",
+        "-c",
+        "--codigo",
         type=str,
         nargs="+",
         default=None,
         metavar="NCM",
         help=(
             "Uno o más códigos NCM (o prefijos) a buscar, separados por espacios "
-            "(ej. --ncm 73 84.20). Los puntos son opcionales (84.20 y 8420 son "
+            "(ej. --codigo 73 84.20). Los puntos son opcionales (84.20 y 8420 son "
             "equivalentes)."
         ),
     )
@@ -330,17 +329,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         format="%(message)s",
     )
 
-    if args.importador is None and args.ncm is None:
-        parser.error("Debe indicar al menos --importador o --ncm.")
+    if args.nombre is None and args.codigo is None:
+        parser.error("Debe indicar al menos --nombre o --codigo.")
 
     df_result = query_importaciones(
-        years=args.years, importador=args.importador, ncm=args.ncm
+        years=args.years, nombre=args.nombre, codigo=args.codigo
     )
     export_query_result(
         df_result,
         args.years,
-        args.importador,
-        args.ncm,
+        args.nombre,
+        args.codigo,
         output_dir=args.output,
         formato=args.formato,
     )

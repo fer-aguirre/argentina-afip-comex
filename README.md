@@ -32,7 +32,7 @@ Abrí [`notebooks/0.5-query-data.ipynb`](notebooks/0.5-query-data.ipynb) en Jupy
 
 **Si preferís la terminal:**
 ```bash
-uv run argentina-afip-query --years 2024 --ncm 2701 --importador "acme"
+uv run argentina-afip-query --years 2024 --codigo 2701 --nombre "acme"
 ```
 Más ejemplos en [Consultar los datos](#consultar-los-datos).
 
@@ -72,13 +72,13 @@ Si preferís armar la tabla desde cero, con los archivos originales de ARCA, seg
 
 ## Consultar los datos
 
-Las consultas funcionan igual desde un notebook o desde la terminal. Hay que indicar al menos un **importador** o un **código NCM**, para no recorrer los 44 millones de filas sin acotar.
+Las consultas funcionan igual desde un notebook o desde la terminal. Hay que indicar al menos un **nombre** de importador o un **código NCM**, para no recorrer los 44 millones de filas sin acotar.
 
 | Filtro | Qué es | Ejemplo |
 |---|---|---|
 | `years` | Año o lista de años | `2024` / `[2023, 2024, 2025]` |
-| `importador` *(opcional)* | Nombre del importador. Busca coincidencias parciales, sin distinguir mayúsculas de minúsculas; podés escribir puntos o paréntesis tal cual (ej. `"s.a."`). Cuanto más específico, mejor: un término corto como `"sa"` puede devolver miles de resultados. | `"acme"` |
-| `ncm` *(opcional)* | Código NCM (el código del producto en el Mercosur), completo o solo el comienzo. Los puntos son opcionales: `84.20` = `8420`. | `"2701"` |
+| `nombre` *(opcional)* | Nombre del importador. Busca coincidencias parciales, sin distinguir mayúsculas de minúsculas; podés escribir puntos o paréntesis tal cual (ej. `"s.a."`). Cuanto más específico, mejor: un término corto como `"sa"` puede devolver miles de resultados. | `"acme"` |
+| `codigo` *(opcional)* | Código NCM (el código del producto en el Mercosur), completo o solo el comienzo. Los puntos son opcionales: `84.20` = `8420`. | `"2701"` |
 
 **Desde un notebook:**
 ```python
@@ -88,7 +88,7 @@ from argentina_afip_comex.query import (
     query_importaciones,
 )
 
-resultado = query_importaciones(years=[2024, 2025], ncm="2701")
+resultado = query_importaciones(years=[2024, 2025], codigo="2701")
 export_query_result(
     resultado, [2024, 2025], None, "2701", output_dir=OUTPUTS_TABLES_DIR, formato="xlsx"
 )
@@ -96,8 +96,8 @@ export_query_result(
 
 **Desde la terminal:**
 ```bash
-uv run argentina-afip-query --years 2024 2025 -n 2701 -f xlsx
-uv run argentina-afip-query --years 2023 2024 -i "acme" -o outputs/tables
+uv run argentina-afip-query --years 2024 2025 -c 2701 -f xlsx
+uv run argentina-afip-query --years 2023 2024 -n "acme" -o outputs/tables
 ```
 Por defecto guarda un CSV en la carpeta donde estás parado/a. Con `-o` elegís otra carpeta (se crea si no existe) y con `-f` el formato: `csv`, `xlsx` o `parquet`. Todas las opciones aparecen con `--help`.
 
@@ -105,7 +105,7 @@ El resultado trae las columnas del [diccionario de datos](#diccionario-de-datos)
 
 > **¿CSV o Excel?** El CSV es el formato por defecto porque no tiene límite de filas. Excel admite como máximo 1.048.576 filas por hoja, así que una búsqueda amplia (por ejemplo, un capítulo NCM entero en varios años) puede no entrar en un `.xlsx`.
 
-> **En Windows**, si `uv run argentina-afip-query` falla con un error de que una directiva bloqueó el archivo, usá: `uv run python -m argentina_afip_comex --years 2024 --ncm 2701`.
+> **En Windows**, si `uv run argentina-afip-query` falla con un error de que una directiva bloqueó el archivo, usá: `uv run python -m argentina_afip_comex --years 2024 --codigo 2701`.
 
 ### Analizar la tabla completa
 
