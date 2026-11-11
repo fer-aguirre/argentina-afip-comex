@@ -21,6 +21,7 @@ dependencies = [
 
 [project.scripts]
 argentina-afip-query = "argentina_afip_comex.query:main"
+argentina-afip-sync = "argentina_afip_comex.sync:main"
 argentina-afip-update = "argentina_afip_comex.update:main"
 
 [build-system]

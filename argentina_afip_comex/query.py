@@ -55,7 +55,7 @@ def download_decoded_data() -> None:
     """
     destination = utils.data_processed_dir(DECODED_FILENAME)
     logger.info(
-        "Dataset no encontrado localmente. Descargando desde %s...",
+        "Descargando dataset desde %s...",
         RELEASE_DOWNLOAD_URL,
     )
     destination.parent.mkdir(parents=True, exist_ok=True)

@@ -54,7 +54,7 @@ cd argentina-afip-comex
 uv sync
 ```
 
-`uv sync` crea una carpeta `.venv` con todo lo necesario, incluido el comando `argentina-afip-query`. Todos los comandos de este README se corren desde la carpeta del proyecto.
+`uv sync` crea una carpeta `.venv` con todo lo necesario, incluidos los comandos `argentina-afip-query` (consultas) y `argentina-afip-sync` (actualizar tus datos). Todos los comandos de este README se corren desde la carpeta del proyecto.
 
 ---
 
@@ -64,9 +64,25 @@ La tabla final es un único archivo, `importaciones_decoded.parquet` (~900 MB). 
 
 **No hace falta descargarla a mano.** La primera vez que corrés una consulta (con el notebook `0.5` o desde la terminal), si el archivo no está en `data/processed/`, se descarga solo desde el [release más reciente](https://github.com/fer-aguirre/argentina-afip-comex/releases/latest) del repositorio. Un *release* es una versión publicada del dataset en GitHub; también podés bajar el archivo desde esa página.
 
-> **Para tener los meses más recientes:** tu copia local no se actualiza sola. Borrá `data/processed/importaciones_decoded.parquet` y volvé a correr una consulta: se descarga la versión más nueva. Hasta qué mes llega cada versión figura en las notas del [release más reciente](https://github.com/fer-aguirre/argentina-afip-comex/releases/latest) y en [`data/manifest.json`](data/manifest.json).
-
 Si preferís armar la tabla desde cero, con los archivos originales de ARCA, seguí los pasos de [Cómo se arma la tabla](#cómo-se-arma-la-tabla). El proceso completo necesita unos 30 GB libres en disco.
+
+### Actualizar tus datos
+
+Los datos en GitHub se actualizan solos todos los meses, pero tu copia no. Para ponerla al día, corré estos dos comandos desde la carpeta del proyecto:
+
+```bash
+git pull
+uv run argentina-afip-sync
+```
+
+- `git pull` trae los últimos cambios del proyecto.
+- `argentina-afip-sync` compara tus archivos de `data/processed/` con los de GitHub y descarga solo los que estén viejos. Si ya están al día, no descarga nada.
+
+Si un archivo tuyo es distinto y más nuevo que el de GitHub (por ejemplo, porque lo armaste vos), no lo reemplaza: te avisa y lo deja como está.
+
+En Windows, si el comando está bloqueado, usá `uv run python -m argentina_afip_comex.sync`.
+
+Hasta qué mes llega cada versión figura en las notas del [release más reciente](https://github.com/fer-aguirre/argentina-afip-comex/releases/latest) y en [`data/manifest.json`](data/manifest.json).
 
 ---
 
@@ -209,6 +225,7 @@ Si no hay nada nuevo, termina en un par de minutos sin cambiar nada. También se
 argentina-afip-comex/
 ├─ argentina_afip_comex/      # Código del proyecto
 │  ├─ query.py                # Consultas y exportación (notebook y terminal)
+│  ├─ sync.py                 # Pone al día los datos locales con el release
 │  ├─ consulta.py             # Parámetros de la búsqueda y nombre del archivo exportado
 │  ├─ pipeline.py             # Pasos para armar la tabla, mes por mes
 │  ├─ update.py               # Actualización con los meses nuevos
