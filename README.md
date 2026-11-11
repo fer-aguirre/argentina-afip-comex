@@ -72,7 +72,7 @@ Si preferís armar la tabla desde cero, con los archivos originales de ARCA, seg
 
 ## Consultar los datos
 
-Las consultas funcionan igual desde un notebook o desde la terminal. Hay que indicar al menos un **nombre** de importador o un **código NCM**, para no recorrer los 44 millones de filas sin acotar.
+Las consultas funcionan igual desde un notebook o desde la terminal. Hay que indicar al menos un **nombre** de importador o un **código NCM**, para no recorrer los 44 millones de filas sin acotar. Desde Python, los filtros se pasan a `Consulta`, que se usa tanto para consultar como para exportar: así el nombre del archivo siempre describe los datos que contiene.
 
 | Filtro | Qué es | Ejemplo |
 |---|---|---|
@@ -82,15 +82,12 @@ Las consultas funcionan igual desde un notebook o desde la terminal. Hay que ind
 
 **Desde un notebook:**
 ```python
-from argentina_afip_comex.query import (
-    OUTPUTS_TABLES_DIR,
-    export_query_result,
-    query_importaciones,
-)
+from argentina_afip_comex import Consulta, export_query_result, query_data, utils
 
-resultado = query_importaciones(years=[2024, 2025], codigo="2701")
+consulta = Consulta(years=[2024, 2025], codigo="2701")
+resultado = query_data(consulta)
 export_query_result(
-    resultado, [2024, 2025], None, "2701", output_dir=OUTPUTS_TABLES_DIR, formato="xlsx"
+    resultado, consulta, output_dir=utils.outputs_tables_dir(), formato="xlsx"
 )
 ```
 
@@ -101,6 +98,8 @@ uv run argentina-afip-query --years 2023 2024 -n "acme" -o outputs/tables
 ```
 Por defecto guarda un CSV en la carpeta donde estás parado/a. Con `-o` elegís otra carpeta (se crea si no existe) y con `-f` el formato: `csv`, `xlsx` o `parquet`. Todas las opciones aparecen con `--help`.
 
+**Nombre del archivo:** se arma con la búsqueda y la fecha y hora de exportación, así nunca pisa un resultado anterior. Por ejemplo, `ar_importacion_acme_2701_2023-2024_20261111T153012.csv`: país, régimen (siempre `importacion`), nombre, códigos NCM, años y fecha y hora en formato ISO 8601 (`AAAAMMDDTHHMMSS`). Los años seguidos se escriben como rango y los sueltos se suman con `+` (`2019-2021+2024`). Los acentos y los caracteres que no sirven en un nombre de archivo se reemplazan, el nombre se recorta a 40 caracteres y se escriben hasta 3 códigos (`0101-0102-0103-y5mas`).
+
 El resultado trae las columnas del [diccionario de datos](#diccionario-de-datos), más `AÑO` y `MES` (calculadas a partir de `FECHA`) para filtrar o agrupar más fácil.
 
 > **¿CSV o Excel?** El CSV es el formato por defecto porque no tiene límite de filas. Excel admite como máximo 1.048.576 filas por hoja, así que una búsqueda amplia (por ejemplo, un capítulo NCM entero en varios años) puede no entrar en un `.xlsx`.
@@ -109,18 +108,18 @@ El resultado trae las columnas del [diccionario de datos](#diccionario-de-datos)
 
 ### Analizar la tabla completa
 
-Para análisis que van más allá de un filtro (agregados por país, series de tiempo, etc.), podés leer la tabla directamente en tu propio notebook. Con [polars](https://docs.pola.rs/) y `scan_parquet`, la consulta solo lee las columnas y filas que necesita:
+Para análisis que van más allá de un filtro (agregados por país, series de tiempo, etc.), podés leer la tabla directamente en tu propio notebook. Con [polars](https://docs.pola.rs/) y `scan_parquet`, la consulta solo lee las columnas y filas que necesita. `utils` arma las rutas a las carpetas del proyecto, así el código funciona desde cualquier notebook:
 
 ```python
 import polars as pl
 
-from argentina_afip_comex.query import DATA_PATH
+from argentina_afip_comex import utils
 
 # Valor FOB/CIF importado en 2024 por país de origen, solo ítems declarados en dólares.
 # Se suma VALOR_FOB_ITEM, no VALOR_FOB_DECLARACION (que se repite en cada ítem):
 # ver "Qué tener en cuenta al analizar".
 df_por_pais = (
-    pl.scan_parquet(DATA_PATH)
+    pl.scan_parquet(utils.data_processed_dir("importaciones_decoded.parquet"))
     .filter(
         pl.col("FECHA").str.starts_with("2024"),
         pl.col("DIVISA") == "DOLAR ESTADOUNIDENSE",
@@ -210,8 +209,10 @@ Si no hay nada nuevo, termina en un par de minutos sin cambiar nada. También se
 argentina-afip-comex/
 ├─ argentina_afip_comex/      # Código del proyecto
 │  ├─ query.py                # Consultas y exportación (notebook y terminal)
+│  ├─ consulta.py             # Parámetros de la búsqueda y nombre del archivo exportado
 │  ├─ pipeline.py             # Pasos para armar la tabla, mes por mes
 │  ├─ update.py               # Actualización con los meses nuevos
+│  ├─ utils.py                # Rutas a las carpetas del proyecto
 │  └─ __main__.py             # Permite consultar con `python -m argentina_afip_comex`
 │
 ├─ notebooks/                 # Los pasos del proceso, numerados

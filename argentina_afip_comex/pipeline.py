@@ -22,15 +22,13 @@ import polars.selectors as cs
 import requests
 from bs4 import BeautifulSoup
 
-from argentina_afip_comex.query import DATA_PATH
+from argentina_afip_comex import utils
+from argentina_afip_comex.query import DECODED_FILENAME
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-RAW_DIR = PROJECT_ROOT / "data" / "raw"
-INTERIM_DIR = PROJECT_ROOT / "data" / "interim"
-MONTHS_DIR = PROJECT_ROOT / "data" / "processed" / "months"
-DOCS_DIR = PROJECT_ROOT / "docs"
+# Subcarpeta de data/processed/ con un parquet decodificado por mes.
+MONTHS_SUBDIR = "months"
 
 ARCA_BASE_URL = "https://www.afip.gob.ar"
 ARCA_PAGE_URL = (
@@ -147,7 +145,7 @@ def download_month(year_month: str) -> Path | None:
     Raises:
         requests.HTTPError: If the download fails.
     """
-    zip_path = RAW_DIR / year_month[:4] / f"{year_month}.zip"
+    zip_path = utils.data_raw_dir(year_month[:4], f"{year_month}.zip")
     if zip_path.exists() and zipfile.is_zipfile(zip_path):
         logger.debug("%s ya descargado, se omite.", zip_path.name)
         return zip_path
@@ -215,7 +213,7 @@ def convert_month_to_parquet(zip_path: Path) -> Path | None:
         Path to data/interim/<year>/<yyyymm>/impo_<yyyymm>.parquet, or None if the zip has no impo_*.lst member.
     """
     year_month = zip_path.stem
-    month_dir = INTERIM_DIR / year_month[:4] / year_month
+    month_dir = utils.data_interim_dir(year_month[:4], year_month)
     output_path = month_dir / f"impo_{year_month}.parquet"
 
     if output_path.exists():
@@ -314,7 +312,7 @@ def _load_catalog(column: str) -> pl.DataFrame:
     # `Codigo` must be forced to Utf8 -- otherwise polars infers it as an integer and
     # strips the leading zeros that the raw codes rely on (e.g. "001" -> 1).
     return pl.read_csv(
-        DOCS_DIR / filename,
+        utils.docs_dir(filename),
         separator="|",
         quote_char='"',
         schema_overrides={"Codigo": pl.Utf8},
@@ -337,7 +335,9 @@ def decode_month(reshaped_path: Path) -> Path:
         Path to data/processed/months/importaciones_<yyyymm>_decoded.parquet.
     """
     year_month = reshaped_path.parent.name
-    output_path = MONTHS_DIR / f"importaciones_{year_month}_decoded.parquet"
+    output_path = utils.data_processed_dir(
+        MONTHS_SUBDIR, f"importaciones_{year_month}_decoded.parquet"
+    )
     if output_path.exists():
         return output_path
 
@@ -354,7 +354,7 @@ def decode_month(reshaped_path: Path) -> Path:
     )
     lf = lf.rename(PAIS_COLUMN_NAMES | FINAL_COLUMN_NAMES)
 
-    MONTHS_DIR.mkdir(parents=True, exist_ok=True)
+    utils.data_processed_dir(MONTHS_SUBDIR).mkdir(parents=True, exist_ok=True)
     lf.sink_parquet(output_path)
     return output_path
 
@@ -389,7 +389,7 @@ def unknown_codes(reshaped_path: Path) -> dict[str, dict[str, int]]:
 
 
 def combine_months(month_paths: list[Path], extend_existing: bool) -> None:
-    """Combine decoded month files into the final dataset at DATA_PATH.
+    """Combine decoded month files into the final dataset in data/processed/.
 
     Writes to a temporary file and renames it into place, so a failure never
     leaves a half-written dataset behind.
@@ -397,17 +397,18 @@ def combine_months(month_paths: list[Path], extend_existing: bool) -> None:
     Args:
         month_paths: Decoded month parquets from `decode_month`.
         extend_existing: If True, add the months to the existing dataset at
-            DATA_PATH, dropping its rows for those months first so re-adding a
+            data/processed/, dropping its rows for those months first so re-adding a
             month replaces it instead of duplicating it. If False, build the
             dataset from `month_paths` only.
     """
+    data_path = utils.data_processed_dir(DECODED_FILENAME)
     frames = [pl.scan_parquet(month_paths)]
     if extend_existing:
         new_months = [path.stem.split("_")[1] for path in month_paths]
         frames.insert(
-            0, pl.scan_parquet(DATA_PATH).filter(~pl.col("FECHA").is_in(new_months))
+            0, pl.scan_parquet(data_path).filter(~pl.col("FECHA").is_in(new_months))
         )
 
-    tmp_path = DATA_PATH.with_name(f"{DATA_PATH.name}.tmp")
+    tmp_path = data_path.with_name(f"{data_path.name}.tmp")
     pl.concat(frames).sink_parquet(tmp_path)
-    tmp_path.replace(DATA_PATH)
+    tmp_path.replace(data_path)

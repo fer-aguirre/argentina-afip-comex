@@ -21,8 +21,8 @@ from pathlib import Path
 
 import polars as pl
 
+from argentina_afip_comex import utils
 from argentina_afip_comex.pipeline import (
-    PROJECT_ROOT,
     combine_months,
     convert_month_to_parquet,
     decode_month,
@@ -32,11 +32,11 @@ from argentina_afip_comex.pipeline import (
     reshape_month,
     unknown_codes,
 )
-from argentina_afip_comex.query import DATA_PATH, download_decoded_data
+from argentina_afip_comex.query import DECODED_FILENAME, download_decoded_data
 
 logger = logging.getLogger(__name__)
 
-MANIFEST_PATH = PROJECT_ROOT / "data" / "manifest.json"
+MANIFEST_PATH = utils.data_dir("manifest.json")
 
 # Proporción máxima de filas de un mes con códigos que no están en los
 # catálogos de docs/ (y que por lo tanto quedan vacíos al decodificar). En los
@@ -137,7 +137,7 @@ def update() -> list[str]:
     """Process every month ARCA has published that isn't in the manifest yet.
 
     New months are downloaded, converted, reshaped and decoded one at a time,
-    then added to the dataset at DATA_PATH (downloaded first from the latest
+    then added to the dataset in data/processed/ (downloaded first from the latest
     release if it isn't there). The manifest is saved only after the dataset
     is written.
 
@@ -179,9 +179,10 @@ def update() -> list[str]:
     if not decoded_paths:
         return []
 
-    if not DATA_PATH.exists():
+    data_path = utils.data_processed_dir(DECODED_FILENAME)
+    if not data_path.exists():
         download_decoded_data()
-    logger.info("Agregando %d mes(es) a %s...", len(decoded_paths), DATA_PATH)
+    logger.info("Agregando %d mes(es) a %s...", len(decoded_paths), data_path)
     combine_months(decoded_paths, extend_existing=True)
 
     manifest.update(new_records)
@@ -204,7 +205,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         description=(
             "Descarga y procesa los meses que ARCA publicó desde la última "
             "actualización, y los agrega a data/processed/"
-            f"{DATA_PATH.name}. Los meses ya procesados se leen de "
+            f"{DECODED_FILENAME}. Los meses ya procesados se leen de "
             "data/manifest.json."
         ),
     )
